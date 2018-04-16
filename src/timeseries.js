@@ -2,6 +2,7 @@
 var TimeSeries = module.exports = function(redis, keyBase, granularities) {
   this.redis = redis;
   this.keyBase = keyBase || 'stats';
+  this.noMulti = true // by default, do not use multi (for performance issue)
   this.pendingMulti = redis.multi();
   this.granularities = granularities || {
     '1second'  : { ttl: this.minutes(5), duration: 1 },
@@ -100,8 +101,8 @@ TimeSeries.prototype.exec = function(callback) {
   // avoid concurrent modifications
   var current = this.pendingMulti;
   this.pendingMulti = this.redis.multi();
-
   current.exec(callback);
+  current = null
 };
 
 /** 
