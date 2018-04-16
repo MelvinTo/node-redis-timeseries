@@ -44,14 +44,14 @@ TimeSeries.prototype.recordHit = function(key, timestamp, increment, callback) {
         hitTimestamp = getRoundedTime(properties.duration, timestamp);
 
    if(self.noMulti) {
-    self.pendingMulti.hincrby(tmpKey, hitTimestamp, Math.floor(increment || 1), (err) => {
+    self.redis.hincrby(tmpKey, hitTimestamp, Math.floor(increment || 1), (err) => {
       if(err) {
         if(callback) {
           callback(err)
         }
         return
       }
-      self.pendingMulti.expireat(tmpKey, keyTimestamp + 2 * properties.ttl, (err2) => {
+      self.redis.expireat(tmpKey, keyTimestamp + 2 * properties.ttl, (err2) => {
         if(callback) {
           callback(err2)
         }
