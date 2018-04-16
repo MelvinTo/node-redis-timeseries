@@ -2,7 +2,7 @@
 var TimeSeries = module.exports = function(redis, keyBase, granularities) {
   this.redis = redis;
   this.keyBase = keyBase || 'stats';
-  this.noMulti = true // by default, do not use multi (for performance issue)
+  this.noMulti = false
   this.pendingMulti = redis.batch();
   this.granularities = granularities || {
     '1second'  : { ttl: this.minutes(5), duration: 1 },
