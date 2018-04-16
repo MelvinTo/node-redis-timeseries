@@ -34,7 +34,7 @@ TimeSeries.prototype.months  = function(i) { return i*(this.weeks(4)+this.days(2
  * `timestamp` should be in seconds, and defaults to current time.
  * `increment` should be an integer, and defaults to 1
  */
-TimeSeries.prototype.recordHit = function(key, timestamp, increment) {
+TimeSeries.prototype.recordHit = function(key, timestamp, increment, callback) {
   var self = this;
 
   Object.keys(this.granularities).forEach(function(gran) {
@@ -43,8 +43,24 @@ TimeSeries.prototype.recordHit = function(key, timestamp, increment) {
         tmpKey = [self.keyBase, key, gran, keyTimestamp].join(':'),
         hitTimestamp = getRoundedTime(properties.duration, timestamp);
 
-   self.pendingMulti.hincrby(tmpKey, hitTimestamp, Math.floor(increment || 1));
-   self.pendingMulti.expireat(tmpKey, keyTimestamp + 2 * properties.ttl);
+   if(self.noMulti) {
+    self.pendingMulti.hincrby(tmpKey, hitTimestamp, Math.floor(increment || 1), (err) => {
+      if(err) {
+        if(callback) {
+          callback(err)
+        }
+        return
+      }
+      self.pendingMulti.expireat(tmpKey, keyTimestamp + 2 * properties.ttl, (err2) => {
+        if(callback) {
+          callback(err2)
+        }
+      });
+    });
+   } else {
+    self.pendingMulti.hincrby(tmpKey, hitTimestamp, Math.floor(increment || 1));
+    self.pendingMulti.expireat(tmpKey, keyTimestamp + 2 * properties.ttl);
+   }
   });
 
   return this;
@@ -73,6 +89,13 @@ TimeSeries.prototype.removeHit = function(key, timestamp, decrement) {
  * Execute the current pending redis multi
  */
 TimeSeries.prototype.exec = function(callback) {
+  if(this.noMulti) {
+    if(callback) {
+      callback()
+    }
+    return
+  }
+
   // Reset pendingMulti before proceeding to
   // avoid concurrent modifications
   var current = this.pendingMulti;
